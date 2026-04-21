@@ -4,6 +4,11 @@ Paquete EDA + Supervisados
 Estudio de Caso #2 — BCD-6210 Mineria de Datos
 Universidad LEAD | I Cuatrimestre 2026
 
+Integrantes:
+  - Maria Jose Miranda
+  - Julio Orozco
+  - Siloe Cristina Campos Viquez
+
 Guiado por:
   - PaqEDA.py                (Dr. Juan Murillo-Morera)
   - GuiaClaseSupervisada.py  (Dr. Juan Murillo-Morera)
@@ -32,7 +37,7 @@ warnings.filterwarnings("ignore")
 
 
 # ═════════════════════════════════════════════════════════════
-#  CLASE EDA  (basada en PaqEDA.py del profesor)
+#  CLASE EDA
 # ═════════════════════════════════════════════════════════════
 class analisisEDA():
     """
@@ -490,7 +495,7 @@ class Supervisado():
         self.__evaluar(y_test, y_pred, y)
 
     def ADA(self, n_estimators=100):
-        """ADABoost con tres estimadores base (igual que GuiaClaseSupervisada)."""
+        """ADABoost con tres estimadores base """
         estimators = {
             "Decision Tree": DecisionTreeClassifier(
                 min_samples_split=2, max_depth=4),
@@ -668,6 +673,464 @@ class Supervisado():
         leyenda = [Patch(color=c, label=f)
                    for f, c in col_familia.items()]
         plt.legend(handles=leyenda, fontsize=9)
+        plt.tight_layout()
+        plt.show()
+
+        return tabla
+
+# ═════════════════════════════════════════════════════════════
+#  CLASE REGRESION  (extiende el estilo de Supervisado)
+# ═════════════════════════════════════════════════════════════
+from sklearn.linear_model import LinearRegression, Lasso, LassoCV, Ridge, RidgeCV
+from sklearn.svm import SVR
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+
+class Regresion():
+    """
+    Familias de algoritmos:
+      Lineal    : LinearRegression, Lasso, LassoCV, Ridge, RidgeCV
+      SVM       : SVR
+      Arboles   : DecisionTreeRegressor, RandomForestRegressor
+    """
+
+    def __init__(self, df):
+        self.__df = df
+
+    @property
+    def df(self):
+        return self.__df
+
+    @df.setter
+    def df(self, p_df):
+        self.__df = p_df
+
+    # ── Preparacion interna (igual que Supervisado) ────────────
+    def __preparar_datos(self):
+        X = self.__df.drop(columns=['target'])
+        X = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns)
+        y = self.__df['target']
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.25, random_state=42)
+        return X_train, X_test, y_train, y_test
+
+    # ── Modelos internos ───────────────────────────────────────
+    def __modeloLR(self, X_train, y_train):
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+        return model
+
+    def __modeloLasso(self, X_train, y_train, alpha):
+        model = Lasso(alpha=alpha, max_iter=10000)
+        model.fit(X_train, y_train)
+        return model
+
+    def __modeloLassoCV(self, X_train, y_train, cv):
+        model = LassoCV(cv=cv, max_iter=10000)
+        model.fit(X_train, y_train)
+        return model
+
+    def __modeloRidge(self, X_train, y_train, alpha):
+        model = Ridge(alpha=alpha)
+        model.fit(X_train, y_train)
+        return model
+
+    def __modeloRidgeCV(self, X_train, y_train, alphas, cv):
+        model = RidgeCV(alphas=alphas, cv=cv)
+        model.fit(X_train, y_train)
+        return model
+
+    def __modeloSVR(self, X_train, y_train, kernel, C, epsilon):
+        model = SVR(kernel=kernel, C=C, epsilon=epsilon)
+        model.fit(X_train, y_train)
+        return model
+
+    def __modeloDT(self, X_train, y_train, min_samples_split, max_depth):
+        model = DecisionTreeRegressor(min_samples_split=min_samples_split,
+                                      max_depth=max_depth, random_state=42)
+        model.fit(X_train, y_train)
+        return model
+
+    def __modeloRF(self, X_train, y_train, n_estimators,
+                   min_samples_split, max_depth):
+        model = RandomForestRegressor(n_estimators=n_estimators,
+                                      min_samples_split=min_samples_split,
+                                      max_depth=max_depth, random_state=42)
+        model.fit(X_train, y_train)
+        return model
+
+    # ── Prediccion y evaluacion ────────────────────────────────
+    def __predecir(self, model, X_test):
+        return model.predict(X_test)
+
+    def __evaluar(self, y_test, y_pred, nombre=""):
+        rmse = round(np.sqrt(mean_squared_error(y_test, y_pred)), 4)
+        mae  = round(mean_absolute_error(y_test, y_pred), 4)
+        r2   = round(r2_score(y_test, y_pred), 4)
+        print(f"\nRMSE : {rmse}")
+        print(f"MAE  : {mae}")
+        print(f"R²   : {r2}")
+        return {'Modelo': nombre, 'RMSE': rmse, 'MAE': mae, 'R2': r2}
+
+    # ── Captura interna de resultados ──────────────────────────
+    def __evaluar_config(self, model, nombre_config):
+        """Entrena y retorna dict con metricas para una configuracion."""
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        rmse   = round(np.sqrt(mean_squared_error(y_test, y_pred)), 4)
+        mae    = round(mean_absolute_error(y_test, y_pred), 4)
+        r2     = round(r2_score(y_test, y_pred), 4)
+        return {
+            'Configuracion': nombre_config,
+            'RMSE': rmse,
+            'MAE':  mae,
+            'R2':   r2
+        }
+
+    # ── Metodos publicos de comparacion (reutilizados de Supervisado) ─
+    def compararConfiguraciones(self, lista_configs, titulo):
+        """
+        Recibe lista de tuplas (nombre, modelo_sklearn).
+        Entrena cada uno, imprime tabla comparativa y grafico.
+        Retorna lista de dicts con resultados.
+        Criterio de mejor modelo: mayor R².
+        """
+        resultados = []
+        for nombre, modelo in lista_configs:
+            r = self.__evaluar_config(modelo, nombre)
+            resultados.append(r)
+            print(f"  {nombre:45s}  R2={r['R2']}  RMSE={r['RMSE']}")
+
+        # Tabla
+        tabla = pd.DataFrame([{
+            'Configuracion': r['Configuracion'],
+            'RMSE':          r['RMSE'],
+            'MAE':           r['MAE'],
+            'R²':            r['R2']
+        } for r in resultados])
+        print(f"\n{'='*65}")
+        print(f"TABLA COMPARATIVA — {titulo}")
+        print('='*65)
+        print(tabla.to_string(index=False))
+
+        # Grafico (R²)
+        nombres   = [r['Configuracion'] for r in resultados]
+        r2s       = [r['R2'] for r in resultados]
+        mejor_idx = r2s.index(max(r2s))
+        colores   = ['steelblue'] * len(nombres)
+        colores[mejor_idx] = 'darkorange'
+
+        plt.figure(figsize=(max(9, len(nombres) * 1.5), 4), dpi=120)
+        plt.bar(nombres, r2s, color=colores, edgecolor='black')
+        plt.axhline(y=max(r2s), color='darkorange', linestyle='--',
+                    alpha=0.7, label=f'Mejor R²: {max(r2s)}')
+        plt.title(f'{titulo} — Comparacion de Configuraciones (R²)', fontsize=11)
+        plt.ylabel('R²')
+        plt.xticks(rotation=30, ha='right', fontsize=8)
+        plt.legend(fontsize=9)
+        plt.tight_layout()
+        plt.show()
+
+        return resultados
+
+    def mejorModelo(self, resultados, titulo):
+        """
+        Selecciona el modelo con mayor R² e imprime su analisis completo.
+        Retorna el dict del mejor para usarlo en BMFamilias().
+        """
+        mejor = max(resultados, key=lambda r: r['R2'])
+        print(f"\n{'='*65}")
+        print(f"  MEJOR MODELO — {titulo}")
+        print('='*65)
+        print(f"  Configuracion : {mejor['Configuracion']}")
+        print(f"  R²            : {mejor['R2']}")
+        print(f"  RMSE          : {mejor['RMSE']}")
+        print(f"  MAE           : {mejor['MAE']}")
+        print('='*65)
+        return mejor
+
+    # ── Metodos publicos de regresion ──────────────────────────
+    def LR(self):
+        """Regresion Lineal simple y multiple (mismas X, diferente interpretacion)."""
+        print(f"\n{'='*50}")
+        print("Regresion Lineal (LinearRegression)")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloLR(X_train, y_train)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, "LinearRegression")
+        print(f"  Coeficientes: {dict(zip(self.__df.drop(columns=['target']).columns, model.coef_.round(4)))}")
+
+    def LassoReg(self, alpha=1.0):
+        print(f"\n{'='*50}")
+        print(f"Lasso | alpha={alpha}")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloLasso(X_train, y_train, alpha)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, f"Lasso(alpha={alpha})")
+
+    def LassoCVReg(self, cv=5):
+        print(f"\n{'='*50}")
+        print(f"LassoCV | cv={cv}")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloLassoCV(X_train, y_train, cv)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, f"LassoCV(cv={cv})")
+        print(f"  Mejor alpha encontrado: {round(model.alpha_, 4)}")
+
+    def RidgeReg(self, alpha=1.0):
+        print(f"\n{'='*50}")
+        print(f"Ridge | alpha={alpha}")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloRidge(X_train, y_train, alpha)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, f"Ridge(alpha={alpha})")
+
+    def RidgeCVReg(self, alphas=(0.1, 1.0, 10.0), cv=5):
+        print(f"\n{'='*50}")
+        print(f"RidgeCV | alphas={alphas} | cv={cv}")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloRidgeCV(X_train, y_train, alphas, cv)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, f"RidgeCV")
+        print(f"  Mejor alpha encontrado: {round(model.alpha_, 4)}")
+
+    def SVReg(self, kernel='rbf', C=1.0, epsilon=0.1):
+        print(f"\n{'='*50}")
+        print(f"SVR | kernel={kernel} | C={C} | epsilon={epsilon}")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloSVR(X_train, y_train, kernel, C, epsilon)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, f"SVR(kernel={kernel})")
+
+    def DT(self, min_samples_split=2, max_depth=4):
+        print(f"\n{'='*50}")
+        print(f"DecisionTreeRegressor | mss={min_samples_split} | depth={max_depth}")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloDT(X_train, y_train, min_samples_split, max_depth)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, "DecisionTreeRegressor")
+
+    def RF(self, n_estimators=100, min_samples_split=2, max_depth=4):
+        print(f"\n{'='*50}")
+        print(f"RandomForestRegressor | ne={n_estimators} | mss={min_samples_split} | depth={max_depth}")
+        print('='*50)
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloRF(X_train, y_train, n_estimators,
+                                 min_samples_split, max_depth)
+        y_pred = self.__predecir(model, X_test)
+        self.__evaluar(y_test, y_pred, "RandomForestRegressor")
+
+    # ── Benchmarking estandar ──────────────────────────────────
+    def __LRBM(self):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloLR(X_train, y_train)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def __LassoBM(self, alpha=1.0):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloLasso(X_train, y_train, alpha)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def __LassoCVBM(self, cv=5):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloLassoCV(X_train, y_train, cv)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def __RidgeBM(self, alpha=1.0):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloRidge(X_train, y_train, alpha)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def __RidgeCVBM(self, alphas=(0.1, 1.0, 10.0), cv=5):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloRidgeCV(X_train, y_train, alphas, cv)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def __SVRBM(self, kernel='rbf', C=1.0, epsilon=0.1):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloSVR(X_train, y_train, kernel, C, epsilon)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def __DTBM(self, min_samples_split=2, max_depth=4):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloDT(X_train, y_train, min_samples_split, max_depth)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def __RFBM(self, n_estimators=100, min_samples_split=2, max_depth=4):
+        X_train, X_test, y_train, y_test = self.__preparar_datos()
+        model  = self.__modeloRF(X_train, y_train, n_estimators,
+                                 min_samples_split, max_depth)
+        y_pred = self.__predecir(model, X_test)
+        return {
+            'RMSE': round(np.sqrt(mean_squared_error(y_test, y_pred)), 4),
+            'MAE':  round(mean_absolute_error(y_test, y_pred), 4),
+            'R2':   round(r2_score(y_test, y_pred), 4)
+        }
+
+    def BM(self):
+        """
+        Benchmarking estandar — replica el estilo BM() del profesor.
+        Compara los 8 algoritmos con configuracion por defecto.
+        Metricas: RMSE, MAE, R²
+        """
+        algoritmos = [
+            ("LinearRegression", self.__LRBM),
+            ("Lasso",            self.__LassoBM),
+            ("LassoCV",          self.__LassoCVBM),
+            ("Ridge",            self.__RidgeBM),
+            ("RidgeCV",          self.__RidgeCVBM),
+            ("SVR",              self.__SVRBM),
+            ("DecisionTree",     self.__DTBM),
+            ("RandomForest",     self.__RFBM),
+        ]
+
+        datos  = {"RMSE": [0.0]*8, "MAE": [0.0]*8, "R2": [0.0]*8}
+        Tdatos = pd.DataFrame(datos,
+                              index=[a[0] for a in algoritmos],
+                              columns=["RMSE", "MAE", "R2"])
+
+        for alg_name, alg_method in algoritmos:
+            r = alg_method()
+            Tdatos.loc[alg_name, "RMSE"] = r['RMSE']
+            Tdatos.loc[alg_name, "MAE"]  = r['MAE']
+            Tdatos.loc[alg_name, "R2"]   = r['R2']
+
+        print("\n" + "="*55)
+        print("BENCHMARKING REGRESION — Configuracion Estandar")
+        print("RMSE=Raiz Error Cuadratico Medio | MAE=Error Absoluto Medio")
+        print("R²=Coeficiente de Determinacion (mayor es mejor)")
+        print("="*55)
+        print(Tdatos.to_string())
+        return Tdatos
+
+    # ── Benchmarking por familias ──────────────────────────────
+    def BMFamilias(self, mejores):
+        """
+        Benchmarking entre familias usando los mejores modelos
+        encontrados en el analisis.
+
+        Parametro:
+            mejores: dict con claves:
+                'LR', 'Lasso', 'LassoCV', 'Ridge', 'RidgeCV',
+                'SVR', 'DT', 'RF'
+            Cada valor es el dict retornado por mejorModelo().
+
+        Familias:
+            Lineal: LR, Lasso, LassoCV, Ridge, RidgeCV
+            SVM: SVR
+            Arboles: DT, RF
+        """
+        familias = {
+            "Lineal (LR/Lasso/Ridge)": ["LR", "Lasso", "LassoCV", "Ridge", "RidgeCV"],
+            "SVM (SVR)":               ["SVR"],
+            "Arboles (DT/RF)":         ["DT", "RF"],
+        }
+
+        filas = []
+        for familia, claves in familias.items():
+            for clave in claves:
+                r = mejores[clave]
+                filas.append({
+                    "Familia":  familia,
+                    "Algoritmo": clave,
+                    "Config":   r['Configuracion'],
+                    "RMSE":     r['RMSE'],
+                    "MAE":      r['MAE'],
+                    "R²":       r['R2'],
+                })
+
+        tabla = pd.DataFrame(filas)
+        print("\n" + "="*70)
+        print("BENCHMARKING POR FAMILIAS — Regresion (Diabetes → glucosa)")
+        print("="*70)
+        print(tabla.to_string(index=False))
+
+        print("\n--- Mejor algoritmo por familia (mayor R²) ---")
+        for familia in tabla['Familia'].unique():
+            sub = tabla[tabla['Familia'] == familia]
+            row = sub.loc[sub['R²'].idxmax()]
+            print(f"  {familia:32s} → {row['Algoritmo']:8s} "
+                  f"R²={row['R²']}  RMSE={row['RMSE']}")
+
+        # Grafico por familias
+        from matplotlib.patches import Patch
+        col_familia = {
+            "Lineal (LR/Lasso/Ridge)": "steelblue",
+            "SVM (SVR)":               "darkorange",
+            "Arboles (DT/RF)":         "mediumseagreen",
+        }
+        bar_colors = [col_familia[f] for f in tabla['Familia']]
+        nombres    = tabla['Algoritmo'].tolist()
+        x          = np.arange(len(nombres))
+        w          = 0.25
+
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5), dpi=120)
+
+        # R²
+        axes[0].bar(x, tabla['R²'], color=bar_colors, edgecolor='black')
+        axes[0].set_xticks(x)
+        axes[0].set_xticklabels(nombres)
+        axes[0].set_ylabel('R²')
+        axes[0].set_title('R² por algoritmo', fontsize=10)
+        axes[0].grid(axis='y', linestyle='--', alpha=0.5)
+
+        # RMSE
+        axes[1].bar(x, tabla['RMSE'], color=bar_colors, edgecolor='black')
+        axes[1].set_xticks(x)
+        axes[1].set_xticklabels(nombres)
+        axes[1].set_ylabel('RMSE')
+        axes[1].set_title('RMSE por algoritmo (menor es mejor)', fontsize=10)
+        axes[1].grid(axis='y', linestyle='--', alpha=0.5)
+
+        leyenda = [Patch(color=c, label=f) for f, c in col_familia.items()]
+        axes[0].legend(handles=leyenda, fontsize=8)
+        fig.suptitle('Benchmarking por Familias — Regresion (Diabetes → glucosa)',
+                     fontsize=11)
         plt.tight_layout()
         plt.show()
 
